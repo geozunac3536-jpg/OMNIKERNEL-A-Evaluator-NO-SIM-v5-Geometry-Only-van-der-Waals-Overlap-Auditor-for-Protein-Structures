@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OMNIKERNEL • Protein Metrics Viewer (NO-SIM)</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#020406; font-family:'Segoe UI', monospace; }
+    #viewer { position:fixed; inset:0; }
+    #hud {
+      position:absolute; top:20px; left:20px; width:320px;
+      padding:15px; background: rgba(5,10,15,0.88);
+      border-left: 3px solid #00ffcc;
+      box-shadow: 0 0 20px rgba(0,255,204,0.10);
+      backdrop-filter: blur(4px); color:#fff; z-index:10;
+    }
+    h1 { margin:0 0 10px 0; font-size:13px; color:#00ffcc; letter-spacing:2px;
+          border-bottom:1px solid #004433; padding-bottom:6px; }
+    .row { display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; }
+    .val { font-weight:700; }
+    .c-sigma { color:#4a90e2; }
+    .c-phi { color:#ff3344; }
+    .c-ok { color:#00ff66; }
+    .c-bad { color:#ff5566; }
+    #controls {
+      position:absolute; bottom:18px; width:100%; text-align:center;
+      color:#446688; font-size:10px; letter-spacing:2px; z-index:10; pointer-events:none;
+    }
+  </style>
+  <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+</head>
+<body>
+  <div id="viewer"></div>
+
+  <div id="hud">
+    <h1>OMNIKERNEL • PROTEIN (NO-SIM)</h1>
+    <div class="row"><span style="color:#88aacc">PDB</span><span class="val">A.pdb</span></div>
+    <div class="row"><span style="color:#88aacc">VERDICTO</span>
+      <span class="val c-bad">FAIL_BALANCE</span>
+    </div>
+    <div style="margin-top:10px; border-top:1px dashed #333; padding-top:6px;"></div>
+
+    <div class="row"><span>Σ (Coherencia)</span><span class="val c-sigma">4.427550</span></div>
+    <div class="row"><span>φ (Fricción VdW)</span><span class="val c-phi">5.326400</span></div>
+    <div class="row"><span>Overlaps</span><span class="val c-phi">54 / 49964</span></div>
+    <div class="row"><span>Max overlap (Å)</span><span class="val c-phi">1.596</span></div>
+
+    <div style="margin-top:10px; border-top:1px dashed #333; padding-top:6px;"></div>
+    <div class="row"><span>N_CA</span><span class="val">46</span></div>
+    <div class="row"><span>N_heavy</span><span class="val">327</span></div>
+    <div class="row"><span>H_proxy</span><span class="val">2.367952</span></div>
+
+    <div style="margin-top:10px; border-top:1px dashed #333; padding-top:6px;"></div>
+    <div class="row"><span>Balance (Q·Σ &gt; φ)</span>
+      <span class="val c-bad">FAIL</span>
+    </div>
+  </div>
+
+  <div id="controls">ARRASTRA PARA ROTAR | RUEDA PARA ZOOM | CLICK DERECHO PARA PAN</div>
+
+  <script>
+    const viewer = $3Dmol.createViewer("viewer", { backgroundColor: "#020406" });
+    async function loadDefault() {
+      // If pdbA looks like a local filename, we load a safe default from RCSB
+      const fallbackId = "1UBQ";
+      try {
+        const url = `https://files.rcsb.org/download/${fallbackId}.pdb`;
+        const pdbText = await (await fetch(url)).text();
+        viewer.addModel(pdbText, "pdb");
+        viewer.setStyle({}, { cartoon: {} });
+        viewer.zoomTo();
+        viewer.render();
+      } catch(e) {
+        // If no internet, still show HUD metrics.
+        console.log("No internet: viewer not loaded.");
+      }
+    }
+    loadDefault();
+  </script>
+</body>
+</html>
