@@ -1,0 +1,31 @@
+{
+  "schema": "tcds.omnikernel.evaluator.brain.v5",
+  "name": "OMNIKERNEL-A Evaluator (No-Sim) v5 — CA Σ + VdW-overlap φ",
+  "mode": "evaluator_only",
+  "inputs": {
+    "format": "pdb",
+    "coord_source": "ATOM_or_HETATM",
+    "chain": null,
+    "include_hetatm": true
+  },
+  "metrics": {
+    "sequence_separation_min": 2,
+    "contact_cutoff_Ang": 8.0,
+    "sigma_weight_base": 1.0,
+    "steric_resid_sep_min": 2,
+    "vdw_scale": 1.0,
+    "overlap_threshold_Ang": 0.0,
+    "phi_weight_base": 1.0,
+    "report_normalized": true
+  },
+  "validation": {
+    "use_balance_law": true,
+    "balance_law": "Q_eff * Sigma > Phi",
+    "Q_eff_model": "constant",
+    "Q_eff_constant": 1.0
+  },
+  "logging": {
+    "out_prefix": "omnikernel_A_eval_v5",
+    "save_report_json": true
+  }
+}
