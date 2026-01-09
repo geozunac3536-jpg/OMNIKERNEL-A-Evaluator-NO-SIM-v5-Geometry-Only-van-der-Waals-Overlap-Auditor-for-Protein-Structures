@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+title: "OMNIKERNEL-A Evaluator (NO-SIM) v5: Van der Waals Overlap Structural Auditor"
+message: "If you use this software, please cite it using the DOI below."
+type: software
+authors:
+  - family-names: Carrasco Ozuna
+    given-names: Genaro
+    orcid: https://orcid.org/0009-0005-6358-9910
+version: v5.0.0
+date-released: 2026-01-09
+doi: 10.5281/zenodo.18194092
+license: Apache-2.0
