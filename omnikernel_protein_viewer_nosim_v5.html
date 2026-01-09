@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OMNIKERNEL PROTEIN HOLO-VIEWER (NO-SIM) v1</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#020406; font-family: 'Segoe UI', monospace; }
+    #hud {
+      position:absolute; top:20px; left:20px; width:340px;
+      padding:15px; background: rgba(5,10,15,0.88);
+      border-left: 3px solid #00ffcc;
+      box-shadow: 0 0 20px rgba(0,255,204,0.10);
+      backdrop-filter: blur(4px); color:#fff; z-index:10;
+    }
+    h1 { margin:0 0 10px 0; font-size:13px; color:#00ffcc; letter-spacing:2px;
+          border-bottom:1px solid #004433; padding-bottom:6px; }
+    .row { display:flex; justify-content:space-between; font-size:11px; margin-bottom:5px; }
+    .val { font-weight:700; }
+    .c-sigma { color:#4a90e2; }
+    .c-phi { color:#ff3344; }
+    .c-ok { color:#00ff66; }
+    .c-bad { color:#ff5566; }
+    #controls {
+      position:absolute; bottom:18px; width:100%; text-align:center;
+      color:#446688; font-size:10px; letter-spacing:2px; z-index:10; pointer-events:none;
+    }
+    #panel {
+      position:absolute; top:20px; right:20px; width:360px;
+      padding:12px; background: rgba(5,10,15,0.75);
+      border-right: 3px solid #00ffcc;
+      box-shadow: 0 0 20px rgba(0,255,204,0.08);
+      backdrop-filter: blur(4px); color:#cfe9ff; z-index:10;
+    }
+    #panel label { font-size:10px; color:#88aacc; letter-spacing:1px; display:block; margin:8px 0 4px; }
+    #panel input, #panel textarea, #panel button {
+      width:100%; box-sizing:border-box; font-family: monospace; font-size:11px;
+      background: rgba(0,0,0,0.35); border:1px solid rgba(0,255,204,0.25);
+      color:#e9fbff; padding:8px; border-radius:6px; outline:none;
+    }
+    #panel textarea { height:120px; resize:vertical; }
+    #panel button { cursor:pointer; letter-spacing:2px; margin-top:6px; }
+    #panel button:hover { background: rgba(0,255,204,0.20); }
+    #viewer { position:fixed; inset:0; }
+    .hint { font-size:10px; color:#88aacc; line-height:1.35; margin-top:6px; }
+    .btnrow { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; }
+  </style>
+  <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+</head>
+<body>
+  <div id="viewer"></div>
+
+  <div id="hud">
+    <h1>OMNIKERNEL • PROTEIN AUDIT (NO-SIM)</h1>
+    <div class="row"><span style="color:#88aacc">PDB</span><span class="val">A.pdb</span></div>
+    <div class="row"><span style="color:#88aacc">VERDICTO</span>
+      <span class="val c-bad" id="v-verdict">FAIL_BALANCE</span>
+    </div>
+    <div style="margin-top:10px; border-top:1px dashed #333; padding-top:6px;"></div>
+
+    <div class="row"><span>Σ (Coherencia)</span><span class="val c-sigma" id="v-sigma">4.427550</span></div>
+    <div class="row"><span>φ (Fricción VdW)</span><span class="val c-phi" id="v-phi">5.326400</span></div>
+    <div class="row"><span>Overlaps</span><span class="val c-phi" id="v-over">54 / 49964</span></div>
+    <div class="row"><span>Max overlap (Å)</span><span class="val c-phi" id="v-maxov">1.596</span></div>
+
+    <div style="margin-top:10px; border-top:1px dashed #333; padding-top:6px;"></div>
+    <div class="row"><span>N_CA</span><span class="val" id="v-nca">46</span></div>
+    <div class="row"><span>N_heavy</span><span class="val" id="v-nh">327</span></div>
+    <div class="row"><span>H_proxy</span><span class="val" id="v-h">2.367952</span></div>
+
+    <div style="margin-top:10px; border-top:1px dashed #333; padding-top:6px;"></div>
+    <div class="row"><span>Balance (Q·Σ &gt; φ)</span>
+      <span class="val c-bad" id="v-balance">FAIL</span>
+    </div>
+  </div>
+
+  <div id="panel">
+    <label>PDB ID (opcional)</label>
+    <input id="pdbid" value="1UBQ" />
+    <div class="hint">“Cargar PDB” trae la proteína desde RCSB (si el entorno permite internet).</div>
+    <button onclick="loadFromRCSB()">CARGAR PDB</button>
+
+    <label style="margin-top:10px;">Reporte JSON (pegar aquí, opcional)</label>
+    <textarea id="jsonbox" spellcheck="false"></textarea>
+    <div class="hint">Pega un reporte v5 y presiona “Aplicar” para refrescar HUD y estilo.</div>
+    <button onclick="applyReport()">APLICAR REPORTE</button>
+
+    <label style="margin-top:10px;">Estilo</label>
+    <div class="btnrow">
+      <button onclick="setStyle('cartoon')">CARTOON</button>
+      <button onclick="setStyle('sticks')">STICKS</button>
+      <button onclick="setStyle('surface')">SURFACE</button>
+    </div>
+    <div class="hint">Mouse: rotar • rueda: zoom • click derecho: pan</div>
+  </div>
+
+  <div id="controls">ARRASTRA PARA ROTAR | RUEDA PARA ZOOM | CLICK DERECHO PARA PAN</div>
+
+  <script>
+    const viewer = $3Dmol.createViewer("viewer", { backgroundColor: "#020406" });
+    let currentModel = null;
+
+    function resetScene() {
+      viewer.removeAllModels();
+      viewer.removeAllSurfaces();
+      viewer.render();
+      currentModel = null;
+    }
+
+    async function loadFromRCSB() {
+      const id = document.getElementById('pdbid').value.trim();
+      if (!id) return;
+      resetScene();
+      try {
+        const url = `https://files.rcsb.org/download/${id.toUpperCase()}.pdb`;
+        const pdbText = await (await fetch(url)).text();
+        currentModel = viewer.addModel(pdbText, "pdb");
+        setStyle("cartoon");
+        viewer.zoomTo();
+        viewer.render();
+      } catch(e) {
+        alert("No pude cargar el PDB. Si lo abres sin internet, usa Colab o pega el PDB localmente en el código.");
+      }
+    }
+
+    function setStyle(mode) {
+      if (!currentModel) return;
+      viewer.setStyle({}, {});
+      viewer.removeAllSurfaces();
+
+      if (mode === "cartoon") {
+        viewer.setStyle({}, { cartoon: {} });
+      } else if (mode === "sticks") {
+        viewer.setStyle({}, { stick: {} });
+      } else if (mode === "surface") {
+        viewer.setStyle({}, { cartoon: {} });
+        viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.75 });
+      }
+      viewer.render();
+    }
+
+    function num(x) { return (typeof x === "number") ? x : parseFloat(x); }
+
+    function applyReport() {
+      const txt = document.getElementById('jsonbox').value.trim();
+      if (!txt) return;
+      let rep;
+      try { rep = JSON.parse(txt); } catch(e) { alert("JSON inválido."); return; }
+      if (!rep || !rep.A) { alert("No veo el bloque 'A' en el reporte."); return; }
+
+      const A = rep.A;
+      document.getElementById("v-sigma").innerText = (num(A.Sigma)).toFixed(6);
+      document.getElementById("v-phi").innerText = (num(A.Phi)).toFixed(6);
+      document.getElementById("v-over").innerText = `${A.Phi_overlap_pairs ?? "?"} / ${A.Phi_pairs_tested ?? "?"}`;
+      document.getElementById("v-maxov").innerText = (num(A.Phi_max_overlap_Ang ?? 0)).toFixed(3);
+      document.getElementById("v-nca").innerText = A.N_CA ?? "?";
+      document.getElementById("v-nh").innerText = A.N_atoms_heavy ?? "?";
+      document.getElementById("v-h").innerText = (num(A.H_proxy ?? 0)).toFixed(6);
+
+      const bal = rep.validation?.balance_ok;
+      const verd = rep.validation?.verdict ?? "";
+      const vb = document.getElementById("v-balance");
+      vb.innerText = (bal === true) ? "OK" : (bal === false ? "FAIL" : "—");
+      vb.className = "val " + ((bal === true) ? "c-ok" : (bal === false ? "c-bad" : ""));
+
+      const vv = document.getElementById("v-verdict");
+      vv.innerText = verd;
+      vv.className = "val " + ((verd === "PASS") ? "c-ok" : "c-bad");
+
+      const ov = num(A.Phi_overlap_pairs ?? 0);
+      if (currentModel) {
+        if (ov > 200) setStyle("sticks");
+        else setStyle("cartoon");
+      }
+    }
+
+    // Auto-load default
+    loadFromRCSB();
+  </script>
+</body>
+</html>
